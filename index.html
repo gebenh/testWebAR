@@ -3,89 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WebXR Markerless AR  2 Example</title>
+  <title>WebXR AR Test</title>
   <script src="https://cdn.jsdelivr.net/npm/three@0.136.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.136.0/examples/jsm/webxr/ARButton.js"></script>
-  <style>
-    body { margin: 0; overflow: hidden; }
-    #ar-button {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 1;
-    }
-  </style>
+  <style>body { margin: 0; }</style>
 </head>
 <body>
 
 <script>
   let scene, camera, renderer;
-  let reticle, controller;
-  let isPlaced = false;
-
-  // Initialize Three.js scene
+  
   init();
   animate();
 
   function init() {
-    // Create a new Three.js scene
     scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
 
-    // Set up the camera
-    camera = new THREE.PerspectiveCamera(
-      70,
-      window.innerWidth / window.innerHeight,
-      0.01,
-      20
-    );
-
-    // Set up the renderer
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.xr.enabled = true;
     document.body.appendChild(renderer.domElement);
 
-    // Add AR button to enter AR mode
-    document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
+    document.body.appendChild(ARButton.createButton(renderer));
 
-    // Add light to the scene
-    const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-    scene.add(light);
+    const geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+    const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const cube = new THREE.Mesh(geometry, material);
+    cube.position.set(0, 0, -1); // Place 1 meter in front
+    scene.add(cube);
 
-    // Create reticle for hit testing
-    const geometry = new THREE.RingGeometry(0.05, 0.07, 32).rotateX(-Math.PI / 2);
-    const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    reticle = new THREE.Mesh(geometry, material);
-    reticle.matrixAutoUpdate = false;
-    reticle.visible = false;
-    scene.add(reticle);
-
-    // Controller to handle user interaction (e.g., place object on touch)
-    controller = renderer.xr.getController(0);
-    controller.addEventListener('select', onSelect);
-    scene.add(controller);
-
-    // Adjust camera and renderer on window resize
     window.addEventListener('resize', onWindowResize);
-  }
-
-  // Function to place object in the scene
-  function onSelect() {
-    if (reticle.visible && !isPlaced) {
-      // Create a 3D object (cube)
-      const geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
-      const material = new THREE.MeshNormalMaterial();
-      const cube = new THREE.Mesh(geometry, material);
-
-      // Set the cube's position to the reticle's position
-      cube.position.setFromMatrixPosition(reticle.matrix);
-      cube.quaternion.setFromRotationMatrix(reticle.matrix);
-
-      // Add the cube to the scene
-      scene.add(cube);
-      isPlaced = true;
-    }
   }
 
   function onWindowResize() {
@@ -94,35 +43,11 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
-  // Render loop
   function animate() {
     renderer.setAnimationLoop(render);
   }
 
-  // Render function
-  function render(timestamp, frame) {
-    if (frame) {
-      const referenceSpace = renderer.xr.getReferenceSpace();
-      const session = renderer.xr.getSession();
-
-      // Perform hit testing to find a surface
-      session.requestReferenceSpace('viewer').then((viewerSpace) => {
-        session.requestHitTestSource({ space: viewerSpace }).then((hitTestSource) => {
-          const hitTestResults = frame.getHitTestResults(hitTestSource);
-
-          // If a hit is detected, update reticle position
-          if (hitTestResults.length > 0) {
-            const hit = hitTestResults[0];
-            const hitPose = hit.getPose(referenceSpace);
-            reticle.visible = true;
-            reticle.matrix.fromArray(hitPose.transform.matrix);
-          } else {
-            reticle.visible = false;
-          }
-        });
-      });
-    }
-
+  function render() {
     renderer.render(scene, camera);
   }
 </script>
